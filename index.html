@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>English Spelling Game</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #222; min-height: 100vh; }
+
+  header { background: #1D9E75; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: .5px; }
+  header span { font-size: .85rem; opacity: .85; margin-left: auto; }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  .phase-tabs { display: flex; gap: 10px; margin-bottom: 22px; }
+  .phase-tab {
+    flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #1D9E75;
+    background: #fff; color: #1D9E75; font-size: .95rem; font-weight: 700;
+    cursor: pointer; transition: all .15s; font-family: inherit; text-align: center;
+  }
+  .phase-tab.active { background: #1D9E75; color: #fff; }
+  .phase-tab:hover:not(.active) { background: #e0f5ee; }
+
+  .progress-bar-wrap { background: #e0f5ee; border-radius: 99px; height: 8px; margin-bottom: 8px; }
+  .progress-bar { background: #1D9E75; height: 8px; border-radius: 99px; transition: width .4s; }
+  .progress-label { font-size: .8rem; color: #555; margin-bottom: 16px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+  .chip {
+    width: 32px; height: 32px; border-radius: 50%; border: 2px solid #ccc;
+    background: #fff; font-size: .75rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .15s; color: #555;
+  }
+  .chip:hover { border-color: #1D9E75; color: #1D9E75; }
+  .chip.current { border-color: #1D9E75; background: #1D9E75; color: #fff; }
+  .chip.correct { border-color: #1D9E75; background: #e0f5ee; color: #1D9E75; }
+  .chip.wrong { border-color: #e05252; background: #fdeaea; color: #e05252; }
+
+  .card { background: #f9f9f9; border-radius: 16px; padding: 32px 28px; margin-bottom: 20px; border: 1px solid #eee; }
+  .word-number { font-size: .8rem; color: #999; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .instruction { font-size: 1.05rem; color: #333; margin-bottom: 20px; line-height: 1.5; }
+
+  input[type="text"] {
+    width: 100%; padding: 14px 16px; font-size: 1.1rem;
+    border: 2px solid #ccc; border-radius: 10px; outline: none;
+    transition: border-color .2s, background .2s; font-family: inherit; background: #fff;
+  }
+  input:focus { border-color: #1D9E75; }
+  input.correct { border-color: #1D9E75; background: #e0f5ee; }
+  input.wrong { border-color: #e05252; background: #fdeaea; }
+
+  .feedback { margin-top: 12px; font-size: .95rem; font-weight: 600; min-height: 22px; }
+  .feedback.correct { color: #1D9E75; }
+  .feedback.wrong { color: #e05252; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 11px 22px; border-radius: 8px; border: none; font-size: .95rem;
+    font-weight: 600; cursor: pointer; transition: all .15s; font-family: inherit;
+  }
+  .btn-primary { background: #1D9E75; color: #fff; }
+  .btn-primary:hover { background: #178a64; }
+  .btn-secondary { background: #fff; color: #1D9E75; border: 2px solid #1D9E75; }
+  .btn-secondary:hover { background: #e0f5ee; }
+  .btn-ghost { background: #f0f0f0; color: #555; }
+  .btn-ghost:hover { background: #e4e4e4; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  #result-screen { display: none; }
+  .result-card { background: #f9f9f9; border-radius: 16px; padding: 36px 28px; border: 1px solid #eee; text-align: center; }
+  .result-emoji { font-size: 3rem; margin-bottom: 10px; }
+  .result-score { font-size: 2.2rem; font-weight: 800; color: #1D9E75; margin-bottom: 4px; }
+  .result-pct { font-size: 1rem; color: #666; margin-bottom: 16px; }
+  .result-msg { font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 28px; }
+  .review-title { font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px; text-align: left; }
+  .review-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; margin-bottom: 28px; }
+  .review-word { background: #fdeaea; color: #e05252; border-radius: 6px; padding: 5px 12px; font-size: .9rem; font-weight: 600; }
+  .no-errors { color: #1D9E75; font-weight: 600; font-size: .95rem; margin-bottom: 28px; }
+  .result-actions { display: flex; gap: 10px; }
+  .result-actions .btn { flex: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>✏️ English Spelling</h1>
+  <span id="header-counter">Word 1 of 40</span>
+</header>
+
+<div class="container">
+  <div class="phase-tabs">
+    <button class="phase-tab active" id="tab-1" onclick="switchPhase(1)">📘 Phase 1</button>
+    <button class="phase-tab" id="tab-2" onclick="switchPhase(2)">📗 Phase 2</button>
+    <button class="phase-tab" id="tab-3" onclick="switchPhase(3)">📙 Phase 3</button>
+  </div>
+
+  <div id="game-screen">
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="progress-label" id="progress-label">0 of 40 answered</div>
+    <div class="chips" id="chips"></div>
+    <div class="card">
+      <div class="word-number" id="word-number">Word 1</div>
+      <div class="instruction">Listen to the teacher and type the word you heard:</div>
+      <input type="text" id="answer-input" placeholder="Type the word here…"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <div class="feedback" id="feedback"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="btn-prev" onclick="navigate(-1)">← Previous</button>
+      <button class="btn btn-primary" onclick="checkAnswer()">Check ✓</button>
+      <button class="btn btn-secondary" id="btn-next" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+
+  <div id="result-screen">
+    <div class="result-card">
+      <div class="result-emoji" id="result-emoji"></div>
+      <div class="result-score" id="result-score"></div>
+      <div class="result-pct" id="result-pct"></div>
+      <div class="result-msg" id="result-msg"></div>
+      <div class="review-title">Words to review:</div>
+      <div id="review-list"></div>
+      <div class="result-actions">
+        <button class="btn btn-ghost" onclick="restart()">🔄 Restart this phase</button>
+        <button class="btn btn-primary" id="btn-next-phase" onclick="goNextPhase()">Next Phase →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PHASES = {
+  1: ["Flashlight","Scientist","Bakery","Hungry","Mountain","Workbook","Architect","Dolphin","Practice","Giraffe","Chocolate","English","Police","Circle","Afternoon","Design","Thousand","Computer","Candy","Favorite","Engineer","Bottle","Animal","Kitchen","Delivery","Humid","November","Airplane","Eraser","Sentences","Angry","Excited","Hospital","Musician","Geography","Answer","Bicycle","Baseball","August","Bucket"],
+  2: ["Dream","Chair","Cloudy","Dirty","Cake","Find","December","Easy","Duck","After","Drink","Tiger","Fast","Feel","Cook","Cheese","About","Cousin","Dear","Call","Dinner","Clean","Day","Draw","Hard","Lighter","Our","Class","End","Fine","Cold","Dance","Do","Cookies","Date","Coin","Down","Child","Eat","Dress"],
+  3: ["Meet","Lamp","Now","Car","Nice","Leave","Old","Milk","It","Jump","No","All","New","His","My","Night","Line","Cat","Look","Next","Luck","One","King","Know","May","Not","Man","Job","Love","Have","He","House","Home","I","Math","Hat","Last","Light","Mine","He"]
+};
+
+let currentPhase = 1;
+let current = 0;
+
+// State keyed by phase number, initialized explicitly
+let state = {
+  1: { answers: new Array(40).fill(null), inputs: new Array(40).fill("") },
+  2: { answers: new Array(40).fill(null), inputs: new Array(40).fill("") },
+  3: { answers: new Array(40).fill(null), inputs: new Array(40).fill("") }
+};
+
+function getS() { return state[currentPhase]; }
+function getWords() { return PHASES[currentPhase]; }
+
+function switchPhase(phase) {
+  getS().inputs[current] = document.getElementById("answer-input").value;
+  currentPhase = phase;
+  current = 0;
+  [1,2,3].forEach(p => {
+    document.getElementById("tab-" + p).className = "phase-tab" + (p === phase ? " active" : "");
+  });
+  document.getElementById("result-screen").style.display = "none";
+  document.getElementById("game-screen").style.display = "block";
+  buildChips();
+  loadWord(0);
+}
+
+function buildChips() {
+  const wrap = document.getElementById("chips");
+  wrap.innerHTML = "";
+  getWords().forEach((_, i) => {
+    const c = document.createElement("button");
+    c.className = "chip";
+    c.textContent = i + 1;
+    c.id = "chip-" + i;
+    c.onclick = () => goTo(i);
+    wrap.appendChild(c);
+  });
+}
+
+function loadWord(idx) {
+  current = idx;
+  const words = getWords();
+  const s = getS();
+  const input = document.getElementById("answer-input");
+  input.value = s.inputs[idx] || "";
+  input.className = "";
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("word-number").textContent = "Word " + (idx + 1);
+  document.getElementById("header-counter").textContent = "Word " + (idx + 1) + " of " + words.length;
+  if (s.answers[idx] !== null) {
+    input.className = s.answers[idx] ? "correct" : "wrong";
+    showFeedback(s.answers[idx], idx);
+  }
+  updateProgress();
+  updateChips();
+  document.getElementById("btn-prev").disabled = idx === 0;
+  document.getElementById("btn-next").disabled = idx === words.length - 1;
+  input.focus();
+}
+
+function checkAnswer() {
+  const s = getS();
+  const words = getWords();
+  const input = document.getElementById("answer-input");
+  const raw = input.value;
+  const trimmed = raw.trimStart().trimEnd();
+  const fb = document.getElementById("feedback");
+
+  if (raw !== trimmed) {
+    s.answers[current] = false;
+    s.inputs[current] = raw;
+    input.className = "wrong";
+    fb.textContent = "✗ Remove extra spaces before or after the word.";
+    fb.className = "feedback wrong";
+    updateChips(); updateProgress();
+    return;
+  }
+
+  const isCorrect = trimmed.toLowerCase() === words[current].toLowerCase();
+  s.answers[current] = isCorrect;
+  s.inputs[current] = raw;
+  input.className = isCorrect ? "correct" : "wrong";
+  showFeedback(isCorrect, current);
+  updateChips(); updateProgress();
+
+  if (isCorrect && current < words.length - 1) setTimeout(() => navigate(1), 700);
+  if (s.answers.every(a => a !== null)) setTimeout(showResult, isCorrect ? 900 : 400);
+}
+
+function showFeedback(isCorrect, idx) {
+  const fb = document.getElementById("feedback");
+  fb.textContent = isCorrect ? "✓ Correct!" : "✗ Incorrect. The correct spelling is: " + getWords()[idx];
+  fb.className = "feedback " + (isCorrect ? "correct" : "wrong");
+}
+
+function navigate(dir) {
+  const next = current + dir;
+  if (next >= 0 && next < getWords().length) {
+    getS().inputs[current] = document.getElementById("answer-input").value;
+    goTo(next);
+  }
+}
+
+function goTo(idx) {
+  getS().inputs[current] = document.getElementById("answer-input").value;
+  loadWord(idx);
+}
+
+function updateChips() {
+  const s = getS();
+  getWords().forEach((_, i) => {
+    const c = document.getElementById("chip-" + i);
+    if (!c) return;
+    c.className = "chip";
+    if (i === current) c.classList.add("current");
+    else if (s.answers[i] === true) c.classList.add("correct");
+    else if (s.answers[i] === false) c.classList.add("wrong");
+  });
+}
+
+function updateProgress() {
+  const s = getS();
+  const total = getWords().length;
+  const done = s.answers.filter(a => a !== null).length;
+  document.getElementById("progress-bar").style.width = ((done / total) * 100) + "%";
+  document.getElementById("progress-label").textContent = done + " of " + total + " answered";
+}
+
+function showResult() {
+  document.getElementById("game-screen").style.display = "none";
+  document.getElementById("result-screen").style.display = "block";
+  const words = getWords();
+  const s = getS();
+  const correct = s.answers.filter(a => a === true).length;
+  const total = words.length;
+  const pct = Math.round((correct / total) * 100);
+
+  document.getElementById("result-score").textContent = correct + " / " + total;
+  document.getElementById("result-pct").textContent = pct + "% accuracy";
+
+  let emoji, msg;
+  if (pct === 100) { emoji = "🏆"; msg = "Perfect score! Outstanding work!"; }
+  else if (pct >= 80) { emoji = "🌟"; msg = "Great job! Keep it up!"; }
+  else if (pct >= 60) { emoji = "👍"; msg = "Good effort! A little more practice will help."; }
+  else if (pct >= 40) { emoji = "📚"; msg = "Keep studying — you're getting there!"; }
+  else { emoji = "💪"; msg = "Don't give up! Practice makes perfect."; }
+
+  document.getElementById("result-emoji").textContent = emoji;
+  document.getElementById("result-msg").textContent = msg;
+
+  const wrong = words.filter((_, i) => s.answers[i] === false);
+  const rl = document.getElementById("review-list");
+  rl.innerHTML = wrong.length === 0
+    ? '<div class="no-errors">🎉 No words to review — perfect!</div>'
+    : '<div class="review-list">' + wrong.map(w => `<span class="review-word">${w}</span>`).join("") + '</div>';
+
+  document.getElementById("btn-next-phase").style.display = currentPhase < 3 ? "block" : "none";
+}
+
+function restart() {
+  const len = getWords().length;
+  state[currentPhase] = { answers: new Array(len).fill(null), inputs: new Array(len).fill("") };
+  document.getElementById("result-screen").style.display = "none";
+  document.getElementById("game-screen").style.display = "block";
+  buildChips();
+  loadWord(0);
+}
+
+function goNextPhase() { switchPhase(currentPhase + 1); }
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && document.getElementById("game-screen").style.display !== "none") checkAnswer();
+});
+
+buildChips();
+loadWord(0);
+</script>
+</body>
+</html>
